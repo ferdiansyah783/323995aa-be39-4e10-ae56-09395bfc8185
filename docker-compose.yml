@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:latest
     container_name: postgres
+    restart: always
     env_file:
       - .env
     ports:
