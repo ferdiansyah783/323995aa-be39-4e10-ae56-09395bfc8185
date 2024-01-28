@@ -1,16 +1,16 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { BadRequestException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { PrismaService } from '../../src/prisma/prisma.service';
 import { SignupDto } from './dto/signup.dto';
-import * as bcrypt from 'bcrypt';
 import { SigninDto } from './dto/signin.dto';
 import { JwtService } from '@nestjs/jwt';
 import * as uuid from 'uuid';
+import { hashPassword } from './hash_password';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prismaService: PrismaService,
-    private jwtService: JwtService,
+    private readonly jwtService: JwtService,
   ) {}
 
   async signup(signupDto: SignupDto) {
@@ -22,13 +22,7 @@ export class AuthService {
       });
 
       if (isExistEmail) {
-        throw new HttpException(
-          {
-            statusCode: HttpStatus.BAD_REQUEST,
-            error: 'Email already exist',
-          },
-          HttpStatus.BAD_REQUEST,
-        );
+        throw new BadRequestException('Email already exist');
       }
 
       const role = await this.prismaService.role.findFirst({
@@ -37,28 +31,22 @@ export class AuthService {
         },
       });
 
-      const salt = await bcrypt.genSalt(10);
-      const hashPassword = await bcrypt.hash(signupDto.password, salt);
+      const salt = uuid.v4();
+      const password = await hashPassword(signupDto.password, salt);
 
       const user = await this.prismaService.user.create({
         data: {
           name: signupDto.name,
           email: signupDto.email,
-          password: hashPassword,
+          password: password,
+          salt: salt,
           roleId: role.id,
         },
       });
 
       return user;
     } catch (error) {
-      console.log(error);
-      throw new HttpException(
-        {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: 'Internal Server Error',
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw error;
     }
   }
 
@@ -72,14 +60,14 @@ export class AuthService {
       },
     });
 
-    if (
-      existUser &&
-      (await bcrypt.compare(signinDto.password, existUser.password))
-    ) {
+    const passwordHashed = await hashPassword(signinDto.password, existUser.salt);
+
+    if (existUser && (passwordHashed === existUser.password)) {
+
       const session = await this.prismaService.session.create({
         data: {
-          user_id: existUser.id,
-          refresh_token: uuid.v4(),
+          userId: existUser.id,
+          refreshToken: uuid.v4(),
           status: 'active',
         },
       });
@@ -88,17 +76,19 @@ export class AuthService {
         {
           sub: existUser.id,
           name: existUser.name,
+          roleId: existUser.roleId,
           role: existUser.role.name,
-          session_id: session.id,
+          sessionId: session.id,
         },
         {
-          expiresIn: '1d',
+          secret: process.env.JWT_SECRET_KEY,
+          expiresIn: '15m',
         },
       );
 
       return {
         access_token: accessToken,
-        refresh_token: session.refresh_token,
+        refresh_token: session.refreshToken,
       };
     }
 
@@ -109,5 +99,84 @@ export class AuthService {
       },
       HttpStatus.UNAUTHORIZED,
     );
+  }
+
+  async signout(sessionId: string, token: string): Promise<void> {
+    const existSession = await this.prismaService.session.findFirst({
+      where: {
+        id: sessionId,
+      },
+    });
+
+    if (!existSession) {
+      throw new UnauthorizedException()
+    }
+
+    await this.prismaService.session.update({
+      where: {
+        id: sessionId,
+      },
+      data: {
+        status: 'inactive',
+      },
+    });
+
+    await this.prismaService.invalidToken.create({
+      data: {
+        token: token,
+      },
+    });
+  }
+
+  async refreshToken(token: string) {
+    const session = await this.prismaService.session.findFirst({
+      where: {
+        refreshToken: token,
+        status: 'active',
+      },
+      include: {
+        user: {
+          include: {
+            role: true,
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.NOT_FOUND,
+          error: 'Invalid token',
+        },
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: session.userId,
+        name: session.user.name,
+        roleId: session.user.roleId,
+        role: session.user.role.name,
+        sessionId: session.id,
+      },
+      {
+        secret: process.env.JWT_SECRET_KEY,
+        expiresIn: '7d',
+      },
+    );
+
+    return {
+      access_token: accessToken,
+    };
+  }
+
+  async decodeToken(token: string) {
+    const payload = await this.jwtService.verifyAsync(token, {
+      secret: process.env.JWT_SECRET_KEY,
+    });
+
+    return payload;
   }
 }

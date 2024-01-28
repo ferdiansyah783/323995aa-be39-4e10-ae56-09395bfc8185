@@ -15,6 +15,7 @@ model User {
   name           String    @db.VarChar
   email          String    @unique @db.VarChar
   password       String    @db.VarChar
+  salt           String    @db.VarChar
   role           Role      @relation(fields: [roleId], references: [id])
   roleId         String    @db.Uuid
   adminProject   Project[] @relation("AdminProject")
@@ -28,12 +29,23 @@ model User {
 }
 
 model Role {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String   @unique @db.VarChar(50)
-  users     User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt()
-  deleted   Boolean  @default(false)
+  id         String       @id @default(uuid()) @db.Uuid
+  name       String       @unique @db.VarChar(50)
+  users      User[]
+  Permission Permission[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @default(now()) @updatedAt()
+  deleted    Boolean      @default(false)
+}
+
+model Permission {
+  id         String  @id @default(uuid()) @db.Uuid
+  role       Role    @relation(fields: [roleId], references: [id])
+  roleId     String  @db.Uuid
+  action     String  @db.VarChar(50)
+  subject    String  @db.VarChar(50)
+  conditions Json?   @db.JsonB()
+  reason     String? @db.Text
 }
 
 model Project {
@@ -72,12 +84,20 @@ enum TaskStatus {
 }
 
 model Session {
-  id            String   @id @default(uuid()) @db.Uuid
-  user          User     @relation(fields: [user_id], references: [id])
-  user_id       String   @db.Uuid
-  refresh_token String   @db.Uuid
-  status        String   @db.VarChar(50)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt()
-  deleted       Boolean  @default(false)
+  id           String   @id @default(uuid()) @db.Uuid
+  user         User     @relation(fields: [userId], references: [id])
+  userId       String   @db.Uuid
+  refreshToken String   @db.Uuid
+  status       String   @db.VarChar(50)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt()
+  deleted      Boolean  @default(false)
+}
+
+model InvalidToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  token     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt()
+  deleted   Boolean  @default(false)
 }

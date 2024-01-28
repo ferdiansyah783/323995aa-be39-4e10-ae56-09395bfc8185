@@ -1,11 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req, Request } from '@nestjs/common';
-import { UsersService } from './users.service';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req
+} from '@nestjs/common';
+import { Role } from '../../src/enums/role.enum';
+import { Roles } from '../../src/decorators/roles.decorator';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { Roles } from 'src/decorators/roles.decorator';
-import { Role } from 'src/enums/role.enum';
+import { UsersService } from './users.service';
 
 @Controller('users')
+// @UseGuards(AbilitiesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -14,10 +24,10 @@ export class UsersController {
     return this.usersService.create(createUserDto);
   }
 
-  @Roles(Role.Admin)
   @Get()
-  findAll(@Request() req) {
-    console.log(req.user);
+  // @CheckAbilites({ action: 'manage', subject: 'Project' })
+  @Roles(Role.Admin, Role.SuperAdmin)
+  findAll() {
     return this.usersService.findAll();
   }
 
