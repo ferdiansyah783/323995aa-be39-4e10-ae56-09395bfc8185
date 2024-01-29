@@ -173,10 +173,15 @@ export class AuthService {
   }
 
   async decodeToken(token: string) {
-    const payload = await this.jwtService.verifyAsync(token, {
-      secret: process.env.JWT_SECRET_KEY,
-    });
-
-    return payload;
+    try {
+      const payload = await this.jwtService.verifyAsync(token, {
+        secret: process.env.JWT_SECRET_KEY,
+      });
+  
+      return payload;
+    } catch (error) {
+      console.error(error)
+      throw error
+    }
   }
 }

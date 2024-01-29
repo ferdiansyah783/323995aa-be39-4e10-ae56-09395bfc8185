@@ -1,99 +1,142 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { PrismaService } from '../../src/prisma/prisma.service';
+import { HttpStatus, INestApplication } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
-import { BadRequestException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import * as request from 'supertest';
+import { PrismaService } from '../../src/prisma/prisma.service';
+import { AuthController } from './auth.controller';
+import { AuthGuard } from './auth.guard';
+import { AuthService } from './auth.service';
 
 describe('AuthController', () => {
   let controller: AuthController;
+  let app: INestApplication;
 
-  beforeEach(async () => {    
+  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [AuthService, PrismaService, JwtService],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
+
+    app = module.createNestApplication();
+    await app.init();
   });
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
   });
 
-  // it('should be able to login', async () => {
-  //   const result = await controller.signin({
-  //     email: 'admin@gmail.com',
-  //     password: 'password',
-  //   });
+  it('should be able to login', async () => {
+    return await request(app.getHttpServer())
+      .post('/auth/signin')
+      .send({
+        email: 'admin@gmail.com',
+        password: 'password',
+      })
+      .expect(201);
+  });
 
-  //   expect(result).toEqual({
-  //     message: 'Login success',
-  //     statusCode: 200,
-  //     data: {
-  //       access_token: expect.any(String),
-  //       refresh_token: expect.any(String),
-  //     },
-  //   });
-  // });
+  it('should not be able to login with wrong credentials', async () => {
+    return await request(app.getHttpServer())
+      .post('/auth/signin')
+      .send({
+        email: 'admin@gmail.com',
+        password: 'badpassword',
+      })
+      .expect(401);
+  });
 
-  // it('should not be able to register', async () => {
-  //   try {
-  //     await controller.signup({
-  //       name: 'admin',
-  //       email: 'admin@gmail.com',
-  //       password: 'password',
-  //     })
-  
-  //     fail('Expected BadRequestException, but no exception was thrown');
-  //   } catch (error) {
-  //     expect(error).toBeInstanceOf(BadRequestException);
-  //     expect(error.message).toEqual('Email already exist');
-  //   }
-  // })
+  it('should not be able to register with existing email', async () => {
+    return await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        name: 'admin',
+        email: 'admin@gmail.com',
+        password: 'password',
+      })
+      .expect(400);
+  });
 
-  // it('should be able to signout', async () => {
-  //   const token = await controller.signin({
-  //     email: 'admin@gmail.com',
-  //     password: 'password',
-  //   })
+  it('should be able to register', async () => {
+    const randomString = Array.from({ length: 10 }, () =>
+      String.fromCharCode(Math.floor(Math.random() * 62) + 48),
+    ).join('');
 
-  //   const decodeToken = await controller.decodeToken(token.data.access_token)
+    return await request(app.getHttpServer())
+      .post('/auth/signup')
+      .send({
+        name: `${randomString}`,
+        email: `${randomString}@gmail.com`,
+        password: 'password',
+      })
+      .expect(201);
+  });
 
-  //   const modifiedReq: any = {
-  //     headers: {
-  //       authorization: `Bearer ${token.data.access_token}`,
-  //     },
-  //     user: {
-  //       sessionId: decodeToken.sessionId
-  //     }
-  //   };
+  it('should be able to refresh token', async () => {
+    const token = await request(app.getHttpServer())
+      .post('/auth/signin')
+      .send({
+        email: 'admin@gmail.com',
+        password: 'password',
+      })
+      .then((res) => res.body.data.refresh_token);
 
-  //   const result = await controller.signout(modifiedReq)
+    return await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({
+        refresh_token: token,
+      })
+      .expect(201);
+  });
 
-  //   expect(result).toEqual({
-  //     statusCode: 200,
-  //     message: 'Logout success',
-  //   })
-  // })
+  it('should be able to logout', async () => {
+    const token = await request(app.getHttpServer())
+      .post('/auth/signin')
+      .send({
+        email: 'admin@gmail.com',
+        password: 'password',
+      })
+      .then((res) => res.body.data.access_token);
 
-  // it('should able to refresh token', async () => {
-  //   const token = await controller.signin({
-  //     email: 'admin@gmail.com',
-  //     password: 'password',
-  //   })
+    const decodeToken = await controller.decodeToken(token);
 
-  //   const result = await controller.refreshToken({
-  //     refresh_token: token.data.refresh_token
-  //   })
+    const mockRequest = {
+      headers: {
+        authorization: 'Bearer ' + token,
+      },
+      user: {
+        sessionId: decodeToken.sessionId,
+      },
+    };
 
-  //   expect(result).toEqual({
-  //     statusCode: 200,
-  //     message: 'Refresh token success',
-  //     data: {
-  //       access_token: expect.any(String),
-  //     },
-  //   })
-  // })
+    const result = await controller.signout(mockRequest);
 
+    expect(result).toEqual({
+      statusCode: HttpStatus.OK,
+      message: 'Logout success',
+    });
+  });
+
+  it('should not be able to logout with wrong token', async () => {
+    const mockRequest = {
+      headers: {
+        authorization: 'Bearer dfasdfasfasfasdfasfd',
+      },
+      user: {
+        sessionId: 'cd4ce18b-1759-4667-9da4-40f2b51476f9',
+      },
+    };
+
+    try {
+      await controller.signout(mockRequest);
+    } catch (error) {
+      expect(error.message).toEqual('Unauthorized');
+    }
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
 });
