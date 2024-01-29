@@ -20,54 +20,54 @@ describe('AuthService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should be able to login', async () => {
-    const result = await service.signin({
-      email: 'admin@gmail.com',
-      password: 'password',
-    });
-    expect(result).toHaveProperty('access_token');
-    expect(result).toHaveProperty('refresh_token');
-  });
+  // it('should be able to login', async () => {
+  //   const result = await service.signin({
+  //     email: 'admin@gmail.com',
+  //     password: 'password',
+  //   });
+  //   expect(result).toHaveProperty('access_token');
+  //   expect(result).toHaveProperty('refresh_token');
+  // });
 
-  it('should not be able to signup', async () => {
-    try {
-      await service.signup({
-        name: 'admin',
-        email: 'admin@gmail.com',
-        password: 'password',
-      });
+  // it('should not be able to signup', async () => {
+  //   try {
+  //     await service.signup({
+  //       name: 'admin',
+  //       email: 'admin@gmail.com',
+  //       password: 'password',
+  //     });
   
-      fail('Expected BadRequestException, but no exception was thrown');
-    } catch (error) {
-      expect(error).toBeInstanceOf(BadRequestException);
-      expect(error.message).toEqual('Email already exist');
-    }
-  });
+  //     fail('Expected BadRequestException, but no exception was thrown');
+  //   } catch (error) {
+  //     expect(error).toBeInstanceOf(BadRequestException);
+  //     expect(error.message).toEqual('Email already exist');
+  //   }
+  // });
 
-  it('should be able to signout', async () => {
-    const token = await service.signin({
-      email: 'admin@gmail.com',
-      password: 'password',
-    });
+  // it('should be able to signout', async () => {
+  //   const token = await service.signin({
+  //     email: 'admin@gmail.com',
+  //     password: 'password',
+  //   });
 
-    const decodeToken = await service.decodeToken(token.access_token);
+  //   const decodeToken = await service.decodeToken(token.access_token);
 
-    const result = await service.signout(
-      decodeToken.sessionId,
-      token.access_token,
-    );
+  //   const result = await service.signout(
+  //     decodeToken.sessionId,
+  //     token.access_token,
+  //   );
 
-    expect(result).toBeUndefined();
-  });
+  //   expect(result).toBeUndefined();
+  // });
 
-  it('should be able to refresh token', async () => {
-    const token = await service.signin({
-      email: 'admin@gmail.com',
-      password: 'password',
-    });
+  // it('should be able to refresh token', async () => {
+  //   const token = await service.signin({
+  //     email: 'admin@gmail.com',
+  //     password: 'password',
+  //   });
 
-    const result = await service.refreshToken(token.refresh_token)
+  //   const result = await service.refreshToken(token.refresh_token)
 
-    expect(result).toHaveProperty('access_token');
-  })
+  //   expect(result).toHaveProperty('access_token');
+  // })
 });

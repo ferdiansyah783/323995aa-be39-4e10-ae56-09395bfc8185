@@ -33,8 +33,53 @@ async function main() {
       subject: 'Project',
       role: {
         connect: {
-          name: 'admin'
-        }
+          name: 'super_admin',
+        },
+      },
+    },
+    {
+      action: 'manage',
+      subject: 'Task',
+      role: {
+        connect: {
+          name: 'super_admin',
+        },
+      },
+    },
+    {
+      action: 'manage',
+      subject: 'User',
+      role: {
+        connect: {
+          name: 'super_admin',
+        },
+      },
+    },
+    {
+      action: 'manage',
+      subject: 'Project',
+      role: {
+        connect: {
+          name: 'admin',
+        },
+      },
+    },
+    {
+      action: 'read',
+      subject: 'Task',
+      role: {
+        connect: {
+          name: 'admin',
+        },
+      },
+    },
+    {
+      action: 'read',
+      subject: 'User',
+      role: {
+        connect: {
+          name: 'admin',
+        },
       },
     },
     {
@@ -48,7 +93,34 @@ async function main() {
     },
     {
       action: 'read',
+      subject: 'Project',
+      role: {
+        connect: {
+          name: 'manager',
+        },
+      },
+    },
+    {
+      action: 'read',
+      subject: 'User',
+      role: {
+        connect: {
+          name: 'manager',
+        },
+      },
+    },
+    {
+      action: 'read',
       subject: 'Task',
+      role: {
+        connect: {
+          name: 'employee',
+        },
+      },
+    },
+    {
+      action: 'read',
+      subject: 'Project',
       role: {
         connect: {
           name: 'employee',

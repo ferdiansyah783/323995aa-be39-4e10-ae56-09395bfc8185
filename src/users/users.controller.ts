@@ -19,10 +19,11 @@ import { UsersService } from './users.service';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Post()
-  create(@Body() createUserDto: CreateUserDto) {
-    return this.usersService.create(createUserDto);
-  }
+  // @Post()
+  // @Roles(Role.SuperAdmin)
+  // create(@Body() createUserDto: CreateUserDto) {
+  //   return this.usersService.create(createUserDto);
+  // }
 
   @Get()
   // @CheckAbilites({ action: 'manage', subject: 'Project' })
@@ -32,6 +33,7 @@ export class UsersController {
   }
 
   @Get(':id')
+  @Roles(Role.Admin, Role.SuperAdmin)
   findOne(@Param('id') id: string) {
     return this.usersService.findOne(+id);
   }
@@ -41,8 +43,8 @@ export class UsersController {
     return this.usersService.update(+id, updateUserDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usersService.remove(+id);
-  }
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.usersService.remove(+id);
+  // }
 }
