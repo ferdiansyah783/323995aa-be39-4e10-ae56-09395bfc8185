@@ -1,3 +1,8 @@
+## Build Docker
+```bash
+$ docker-compose up
+```
+
 ## Installation
 
 ```bash
